@@ -30,7 +30,8 @@ app.get("/api/health", (req, res) => {
 const connectDB = async () => {
   try {
     await mongoose.connect(
-      process.env.MONGODB_URI || "mongodb://localhost:27017/cloth-cruiser-cart"
+      process.env.MONGODB_URI ||
+        "mongodb+srv://hophihung:Hophihunga@cluster0.vwaeu3b.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
     );
     console.log("✅ MongoDB connected");
 
