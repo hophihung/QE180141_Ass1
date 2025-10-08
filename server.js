@@ -10,7 +10,15 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Middleware
-app.use(cors());
+const cors = require("cors");
+
+app.use(
+  cors({
+    origin: "https://qe-180141-ass1-cloth-cruiser-cart.vercel.app", // 👈 link FE cố định
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true, // nếu FE có gửi cookie hoặc auth token
+  })
+);
 app.use(express.json());
 
 // Routes
