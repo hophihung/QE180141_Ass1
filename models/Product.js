@@ -23,6 +23,18 @@ const productSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    // New optional fields used by the frontend
+    category: {
+      type: String,
+      trim: true,
+      default: "",
+      maxlength: [50, "Category cannot exceed 50 characters"],
+    },
+    inStock: {
+      type: Boolean,
+      default: true,
+      index: true,
+    },
   },
   {
     timestamps: true, // Adds createdAt and updatedAt fields automatically
@@ -32,6 +44,7 @@ const productSchema = new mongoose.Schema(
 // Add indexes for better query performance
 productSchema.index({ name: 1 });
 productSchema.index({ price: 1 });
+productSchema.index({ category: 1 });
 
 // Virtual for formatted price (if needed)
 productSchema.virtual("formattedPrice").get(function () {

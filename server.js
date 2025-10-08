@@ -13,23 +13,21 @@ const PORT = process.env.PORT || 5000;
 const allowedEnv = process.env.ALLOWED_ORIGINS || "";
 const allowedOrigins = allowedEnv
   ? allowedEnv.split(",").map((s) => s.trim())
-  : [
-      "https://qe180141-ass1.onrender.com", // backend production (if needed)
-      "https://qe-180141-ass1-cloth-cruiser-cart.vercel.app", // frontend prod example
-      "http://localhost:5173", // Vite default
-      "http://localhost:8080", // if you run dev server at 8080
-      "http://localhost:3000",
-    ];
+  : ["http://localhost:5173", "http://localhost:3000", "http://localhost:8080"]; // default dev origins
 
 const corsOptions = {
   origin: function (origin, callback) {
-    // Allow requests with no origin (like curl, mobile apps, server-to-server)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) !== -1) {
+    if (!origin) return callback(null, true); // non-browser or same-origin
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    if (process.env.NODE_ENV !== "production") {
+      console.warn(
+        "[CORS] Temporarily allowing origin in non-production:",
+        origin
+      );
       return callback(null, true);
-    } else {
-      return callback(new Error("CORS not allowed for origin: " + origin));
     }
+    console.warn("[CORS] Blocked origin:", origin);
+    return callback(null, false);
   },
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   credentials: true,
@@ -55,10 +53,11 @@ app.get("/api/health", (req, res) => {
 // Connect to MongoDB and start server
 const connectDB = async () => {
   try {
-    await mongoose.connect(
-      process.env.MONGODB_URI ||
-        "mongodb+srv://hophihung:Hophihunga@cluster0.vwaeu3b.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
-    );
+    if (!process.env.MONGODB_URI) {
+      console.error("MONGODB_URI is not set. Please configure your .env file.");
+      process.exit(1);
+    }
+    await mongoose.connect(process.env.MONGODB_URI);
     console.log("✅ MongoDB connected");
 
     app.listen(PORT, () => {
@@ -80,7 +79,8 @@ mongoose.connection.on("error", (error) => {
 });
 
 // Graceful shutdown
-process.on("SIGINT", async () => {
+async function gracefulShutdown(signal) {
+  console.log(`\nReceived ${signal}. Closing gracefully...`);
   try {
     await mongoose.connection.close();
     console.log("MongoDB connection closed");
@@ -89,6 +89,23 @@ process.on("SIGINT", async () => {
     console.error("Error during shutdown:", error);
     process.exit(1);
   }
+}
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("unhandledRejection", (reason) => {
+  console.error("Unhandled Rejection:", reason);
+});
+process.on("uncaughtException", (err) => {
+  console.error("Uncaught Exception:", err);
+});
+
+// Central error handler (after all routes)
+app.use((err, req, res, next) => {
+  console.error("[ERROR]", err);
+  if (res.headersSent) return next(err);
+  res
+    .status(err.status || 500)
+    .json({ success: false, message: err.message || "Internal Server Error" });
 });
 
 connectDB();
