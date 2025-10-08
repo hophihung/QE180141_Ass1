@@ -1,7 +1,7 @@
 require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
-// const cors = require("cors");
+const cors = require("cors");
 
 // Import routes
 const productRoutes = require("./routes/productRoutes");
@@ -10,15 +10,33 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Middleware
-const cors = require("cors");
+const allowedEnv = process.env.ALLOWED_ORIGINS || "";
+const allowedOrigins = allowedEnv
+  ? allowedEnv.split(",").map((s) => s.trim())
+  : [
+      "https://qe180141-ass1.onrender.com", // backend production (if needed)
+      "https://qe-180141-ass1-cloth-cruiser-cart.vercel.app", // frontend prod example
+      "http://localhost:5173", // Vite default
+      "http://localhost:8080", // if you run dev server at 8080
+      "http://localhost:3000",
+    ];
 
-app.use(
-  cors({
-    origin: "https://qe-180141-ass1-cloth-cruiser-cart.vercel.app", // 👈 link FE cố định
-    methods: ["GET", "POST", "PUT", "DELETE"],
-    credentials: true, // nếu FE có gửi cookie hoặc auth token
-  })
-);
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like curl, mobile apps, server-to-server)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      return callback(null, true);
+    } else {
+      return callback(new Error("CORS not allowed for origin: " + origin));
+    }
+  },
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 app.use(express.json());
 
 // Routes
