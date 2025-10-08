@@ -8,8 +8,10 @@ let app;
 beforeAll(async () => {
   process.env.MONGODB_URI =
     process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/cloth_test";
-  // Dynamically import compiled server
+  process.env.JWT_SECRET = process.env.JWT_SECRET || "test-secret";
+  // Dynamically import compiled server (clear cache so connect runs)
   const serverPath = path.join(__dirname, "..", "dist", "server.js");
+  delete require.cache[require.resolve(serverPath)];
   const mod = require(serverPath);
   app = mod.default;
   if (mod.ready) {
@@ -17,10 +19,15 @@ beforeAll(async () => {
   } else {
     await new Promise((r) => setTimeout(r, 300));
   }
+  if (mongoose.connection.readyState === 1) {
+    await mongoose.connection.db.dropDatabase();
+  }
 });
 
 afterAll(async () => {
-  await mongoose.connection.close();
+  if (mongoose.connection.readyState !== 0) {
+    await mongoose.connection.close();
+  }
 });
 
 describe("Products API", () => {
