@@ -4,6 +4,9 @@ import mongoose from "mongoose";
 import cors, { CorsOptions } from "cors";
 import productRoutes from "./routes/productRoutes";
 import authRoutes from "./routes/authRoutes";
+import cartRoutes from "./routes/cartRoutes";
+import orderRoutes from "./routes/orderRoutes";
+import paymentRoutes from "./routes/paymentRoutes";
 
 const app = express();
 const PORT = process.env.PORT ? Number(process.env.PORT) : 5000;
@@ -43,6 +46,9 @@ app.use(express.json());
 // Routes
 app.use("/api/products", productRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/cart", cartRoutes);
+app.use("/api/orders", orderRoutes);
+app.use("/api/payments", paymentRoutes);
 
 app.get("/", (_req: Request, res: Response) => {
   res.json({ message: "Cloth Cruiser Cart API Server is running!" });

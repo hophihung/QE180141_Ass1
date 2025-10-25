@@ -1,7 +1,7 @@
 import { Router, Request, Response, NextFunction } from "express";
 import bcrypt from "bcrypt";
 import jwt, { Secret, SignOptions } from "jsonwebtoken";
-import User from "../models/User";
+import User, { UserRole } from "../models/User";
 import requireAuth, { AuthRequest } from "../middleware/auth";
 
 const router = Router();
@@ -14,8 +14,8 @@ const BCRYPT_ROUNDS = Number(process.env.BCRYPT_ROUNDS || 10);
 const normalizeEmail = (email?: string) =>
   email ? email.trim().toLowerCase() : "";
 
-const issueToken = (userId: string) =>
-  jwt.sign({ sub: userId }, JWT_SECRET, {
+const issueToken = (userId: string, role: UserRole) =>
+  jwt.sign({ sub: userId, role }, JWT_SECRET, {
     expiresIn: JWT_EXPIRES_IN,
   } as SignOptions);
 
@@ -37,12 +37,10 @@ router.post(
           .json({ success: false, message: "Invalid email format" });
       }
       if (password.length < 6) {
-        return res
-          .status(400)
-          .json({
-            success: false,
-            message: "Password must be at least 6 characters",
-          });
+        return res.status(400).json({
+          success: false,
+          message: "Password must be at least 6 characters",
+        });
       }
 
       const existing = await User.findOne({ email });
@@ -53,13 +51,14 @@ router.post(
       }
 
       const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
-      const user = await User.create({ email, passwordHash });
+      const user = await User.create({ email, passwordHash, role: "user" });
 
       res.status(201).json({
         success: true,
         data: {
           id: user._id,
           email: user.email,
+          role: user.role,
         },
       });
     } catch (err) {
@@ -95,7 +94,7 @@ router.post(
           .json({ success: false, message: "Invalid credentials" });
       }
 
-      const token = issueToken(String(user._id));
+      const token = issueToken(String(user._id), user.role);
 
       res.json({
         success: true,
@@ -104,6 +103,7 @@ router.post(
           user: {
             id: user._id,
             email: user.email,
+            role: user.role,
           },
         },
       });
@@ -123,7 +123,9 @@ router.get(
           .status(401)
           .json({ success: false, message: "Unauthorized" });
       }
-      const user = await User.findById(req.userId).select("email createdAt");
+      const user = await User.findById(req.userId).select(
+        "email createdAt role"
+      );
       if (!user) {
         return res
           .status(404)
@@ -131,7 +133,12 @@ router.get(
       }
       res.json({
         success: true,
-        data: { id: user._id, email: user.email, createdAt: user.createdAt },
+        data: {
+          id: user._id,
+          email: user.email,
+          createdAt: user.createdAt,
+          role: user.role,
+        },
       });
     } catch (err) {
       next(err);
